@@ -5,12 +5,11 @@ import AppKit
 public final class StatusItemController: NSObject {
     public static let shared = StatusItemController()
     
-    private var statusItem: NSStatusItem?
-    private var trackingArea: NSTrackingArea?
+    private var toggleStatusItem: NSStatusItem?
+    private var separatorStatusItem: NSStatusItem?
     private var hoverTimer: Timer?
     
     public var onLeftClick: (() -> Void)?
-    public var onRightClick: (() -> Void)?
     public var onHoverReveal: (() -> Void)?
     
     private override init() {
@@ -18,36 +17,126 @@ public final class StatusItemController: NSObject {
     }
     
     public func setup() {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        self.statusItem = item
+        // 1. Create the primary toggle item (placed to the right)
+        let toggle = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.toggleStatusItem = toggle
         
-        if let button = item.button {
+        if let button = toggle.button {
             button.target = self
-            button.action = #selector(handleStatusItemClick(_:))
+            button.action = #selector(handleToggleClick(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            
-            // Setup tracking area for hover reveal
             setupHoverTracking(for: button)
-            
-            updateIcon()
         }
+        
+        // 2. Create the separator delimiter item (inserted to the left of toggle)
+        let separator = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.separatorStatusItem = separator
+        
+        if let sepButton = separator.button {
+            sepButton.target = self
+            sepButton.action = #selector(handleSeparatorClick(_:))
+            sepButton.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            sepButton.image = createSeparatorImage()
+            sepButton.toolTip = "AleBar Delimiter: ⌘-drag icons to the left of this separator to hide them when collapsed."
+            setupHoverTracking(for: sepButton)
+        }
+        
+        updateIcon()
+        
+        // Default to collapsed state on start so menu bar is clean
+        collapse()
     }
     
     public var statusItemFrame: NSRect? {
-        guard let button = statusItem?.button,
+        guard let button = toggleStatusItem?.button,
               let window = button.window else {
             return nil
         }
         return window.convertToScreen(button.frame)
     }
     
+    // MARK: - Collapse & Expand Logic
+    public func collapse() {
+        guard let sep = separatorStatusItem,
+              let toggle = toggleStatusItem else { return }
+        
+        let collapseLen = getCollapseLength()
+        sep.length = collapseLen
+        sep.button?.image = nil
+        sep.button?.title = ""
+        
+        let style = AppState.shared.statusIconStyle
+        toggle.button?.image = style.iconImage(isExpanded: false)
+        toggle.button?.toolTip = "AleBar: Click to show hidden menu bar items (⌘⌥B)"
+        
+        AppState.shared.isAleBarVisible = false
+        if AppState.shared.hidingMode == .both || AppState.shared.hidingMode == .floatingShelf {
+            AleBarWindowController.shared.hide()
+        }
+    }
+    
+    public func expand() {
+        guard let sep = separatorStatusItem,
+              let toggle = toggleStatusItem else { return }
+        
+        sep.length = NSStatusItem.variableLength
+        sep.button?.image = createSeparatorImage()
+        sep.button?.toolTip = "AleBar Delimiter: ⌘-drag icons to the left of this separator to hide them."
+        
+        let style = AppState.shared.statusIconStyle
+        toggle.button?.image = style.iconImage(isExpanded: true)
+        toggle.button?.toolTip = "AleBar: Click to hide menu bar items (⌘⌥B)"
+        
+        AppState.shared.isAleBarVisible = true
+        
+        if AppState.shared.hidingMode == .both || AppState.shared.hidingMode == .floatingShelf {
+            AleBarWindowController.shared.show()
+        }
+        
+        if AppState.shared.autoHideEnabled && AppState.shared.autoHideDelay > 0 {
+            TriggersEngine.shared.scheduleAutoHide(after: AppState.shared.autoHideDelay) { [weak self] in
+                self?.collapse()
+            }
+        }
+    }
+    
+    public func toggle() {
+        if AppState.shared.isAleBarVisible {
+            collapse()
+        } else {
+            expand()
+        }
+    }
+    
+    private func getCollapseLength() -> CGFloat {
+        let screens = NSScreen.screens
+        let maxWidth = screens.map { $0.frame.width }.max() ?? 1440
+        return max(maxWidth + 400, 2200)
+    }
+    
     public func updateIcon() {
-        guard let button = self.statusItem?.button else { return }
+        guard let button = self.toggleStatusItem?.button else { return }
         let style = AppState.shared.statusIconStyle
         let isExpanded = AppState.shared.isAleBarVisible
         button.image = style.iconImage(isExpanded: isExpanded)
         button.imagePosition = .imageOnly
-        button.toolTip = "AleBar - Click to toggle hidden items (Right-click for options)"
+        button.toolTip = isExpanded ?
+            "AleBar: Click to hide menu bar items (Right-click for options)" :
+            "AleBar: Click to show hidden menu bar items (Right-click for options)"
+    }
+    
+    private func createSeparatorImage() -> NSImage {
+        let size = NSSize(width: 12, height: 22)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        
+        let path = NSBezierPath(roundedRect: NSRect(x: 5, y: 3, width: 2, height: 16), xRadius: 1, yRadius: 1)
+        NSColor.labelColor.withAlphaComponent(0.45).setFill()
+        path.fill()
+        
+        image.unlockFocus()
+        image.isTemplate = true
+        return image
     }
     
     private func setupHoverTracking(for button: NSStatusBarButton) {
@@ -58,24 +147,31 @@ public final class StatusItemController: NSObject {
             userInfo: nil
         )
         button.addTrackingArea(area)
-        self.trackingArea = area
     }
     
-    @objc private func handleStatusItemClick(_ sender: NSStatusBarButton) {
+    @objc private func handleToggleClick(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent
-        
         if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {
             showContextMenu(from: sender)
         } else {
-            onLeftClick?()
-            updateIcon()
+            toggle()
+        }
+    }
+    
+    @objc private func handleSeparatorClick(_ sender: NSStatusBarButton) {
+        let event = NSApp.currentEvent
+        if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {
+            showContextMenu(from: sender)
+        } else {
+            toggle()
         }
     }
     
     public func showContextMenu(from sender: NSStatusBarButton) {
         let menu = NSMenu(title: "AleBar Quick Actions")
         
-        let toggleTitle = AppState.shared.isAleBarVisible ? "Hide AleBar" : "Show AleBar"
+        let isExpanded = AppState.shared.isAleBarVisible
+        let toggleTitle = isExpanded ? "Hide Menu Bar Items" : "Show Menu Bar Items"
         let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(menuToggleBar), keyEquivalent: "b")
         toggleItem.keyEquivalentModifierMask = [.command, .option]
         toggleItem.target = self
@@ -87,6 +183,21 @@ public final class StatusItemController: NSObject {
         menu.addItem(searchItem)
         
         menu.addItem(NSMenuItem.separator())
+        
+        // Hiding Mode Submenu
+        let modeSubmenu = NSMenu(title: "Hiding Mode")
+        for mode in HidingMode.allCases {
+            let item = NSMenuItem(title: mode.rawValue, action: #selector(menuSelectHidingMode(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = mode
+            if AppState.shared.hidingMode == mode {
+                item.state = .on
+            }
+            modeSubmenu.addItem(item)
+        }
+        let modeMenuItem = NSMenuItem(title: "Operation Mode", action: nil, keyEquivalent: "")
+        modeMenuItem.submenu = modeSubmenu
+        menu.addItem(modeMenuItem)
         
         // Quick Theme Preset Submenu
         let themeSubmenu = NSMenu(title: "Menu Bar Styling")
@@ -104,7 +215,7 @@ public final class StatusItemController: NSObject {
         menu.addItem(themeMenuItem)
         
         // Quick Icon Submenu
-        let iconSubmenu = NSMenu(title: "Menu Bar Icon")
+        let iconSubmenu = NSMenu(title: "Menu Bar Icon Style")
         for iconStyle in StatusIconStyle.allCases {
             let item = NSMenuItem(title: iconStyle.rawValue, action: #selector(menuSelectIconStyle(_:)), keyEquivalent: "")
             item.target = self
@@ -114,7 +225,7 @@ public final class StatusItemController: NSObject {
             }
             iconSubmenu.addItem(item)
         }
-        let iconMenuItem = NSMenuItem(title: "Menu Bar Icon Style", action: nil, keyEquivalent: "")
+        let iconMenuItem = NSMenuItem(title: "Icon Style", action: nil, keyEquivalent: "")
         iconMenuItem.submenu = iconSubmenu
         menu.addItem(iconMenuItem)
         
@@ -124,7 +235,7 @@ public final class StatusItemController: NSObject {
         prefItem.target = self
         menu.addItem(prefItem)
         
-        let refreshItem = NSMenuItem(title: "Scan Menu Bar Items", action: #selector(menuRefreshItems), keyEquivalent: "r")
+        let refreshItem = NSMenuItem(title: "Scan Running Items", action: #selector(menuRefreshItems), keyEquivalent: "r")
         refreshItem.target = self
         menu.addItem(refreshItem)
         
@@ -134,18 +245,23 @@ public final class StatusItemController: NSObject {
         quitItem.target = self
         menu.addItem(quitItem)
         
-        statusItem?.menu = menu
+        toggleStatusItem?.menu = menu
         sender.performClick(nil)
-        statusItem?.menu = nil // Restore button click handling
+        toggleStatusItem?.menu = nil
     }
     
     @objc private func menuToggleBar() {
-        AppState.shared.toggleAleBar()
-        self.updateIcon()
+        toggle()
     }
     
     @objc private func menuOpenSearch() {
         AppState.shared.showCommandBar()
+    }
+    
+    @objc private func menuSelectHidingMode(_ sender: NSMenuItem) {
+        guard let mode = sender.representedObject as? HidingMode else { return }
+        AppState.shared.hidingMode = mode
+        AppState.shared.saveSettings()
     }
     
     @objc private func menuSelectTheme(_ sender: NSMenuItem) {
@@ -172,13 +288,12 @@ public final class StatusItemController: NSObject {
     }
     
     @objc public func mouseEntered(with event: NSEvent) {
-        guard AppState.shared.hoverRevealEnabled else { return }
+        guard AppState.shared.hoverRevealEnabled, !AppState.shared.isAleBarVisible else { return }
         hoverTimer?.invalidate()
         let delay = AppState.shared.hoverRevealDelay
         hoverTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.onHoverReveal?()
-                self?.updateIcon()
+                self?.expand()
             }
         }
     }

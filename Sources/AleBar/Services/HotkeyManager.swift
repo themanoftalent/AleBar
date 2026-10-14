@@ -6,6 +6,7 @@ public final class HotkeyManager: @unchecked Sendable {
     
     public var onToggleBar: (() -> Void)?
     public var onOpenCommandBar: (() -> Void)?
+    public var onOpenSettings: (() -> Void)?
     
     private var globalMonitor: Any?
     private var localMonitor: Any?
@@ -44,7 +45,7 @@ public final class HotkeyManager: @unchecked Sendable {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let keyCode = event.keyCode
         
-        // ⌘ + ⌥ + B -> Toggle AleBar Shelf (B = 11)
+        // ⌘ + ⌥ + B -> Toggle AleBar (B = 11)
         if flags == [.command, .option] && keyCode == 11 {
             DispatchQueue.main.async { [weak self] in
                 self?.onToggleBar?()
@@ -56,6 +57,14 @@ public final class HotkeyManager: @unchecked Sendable {
         if flags == [.command, .option] && keyCode == 49 {
             DispatchQueue.main.async { [weak self] in
                 self?.onOpenCommandBar?()
+            }
+            return true
+        }
+        
+        // ⌘ + ⌥ + , -> Open Settings (Comma = 43)
+        if flags == [.command, .option] && keyCode == 43 {
+            DispatchQueue.main.async { [weak self] in
+                self?.onOpenSettings?()
             }
             return true
         }

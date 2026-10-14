@@ -65,6 +65,19 @@ public struct StatusItemModel: Identifiable, Codable, Hashable, Sendable {
         self.orderIndex = orderIndex
         self.isRunning = isRunning
     }
+    
+    public var appIcon: NSImage? {
+        if let bundleId = bundleIdentifier,
+           let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
+            return NSWorkspace.shared.icon(forFile: url.path)
+        }
+        if let pid = processIdentifier,
+           let app = NSRunningApplication(processIdentifier: pid),
+           let icon = app.icon {
+            return icon
+        }
+        return nil
+    }
 }
 
 /// A group of items collapsed into a single menu bar icon

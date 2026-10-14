@@ -76,26 +76,30 @@ public final class AleBarWindowController: NSWindowController {
               let screen = NSScreen.main else { return }
         
         panel.contentView?.layoutSubtreeIfNeeded()
-        let fittingSize = panel.contentView?.fittingSize ?? NSSize(width: 480, height: 60)
+        let fittingSize = panel.contentView?.fittingSize ?? NSSize(width: 480, height: 64)
+        let panelWidth = max(fittingSize.width, 460)
+        let panelHeight = max(fittingSize.height, 64)
+        
         let screenRect = screen.frame
         let visibleRect = screen.visibleFrame
         
         // Menu bar height calculation
-        let menuBarHeight = screenRect.maxY - visibleRect.maxY
-        let barY = screenRect.maxY - max(menuBarHeight, 26) - fittingSize.height - 4
+        let menuBarHeight = max(screenRect.maxY - visibleRect.maxY, 26)
+        let barY = screenRect.maxY - menuBarHeight - panelHeight - 6
         
         var barX: CGFloat
-        if let statusFrame = StatusItemController.shared.statusItemFrame {
-            // Align near status item, right-aligned to status item or centered
-            barX = statusFrame.maxX - fittingSize.width
-            // Ensure within screen bounds
-            barX = max(16, min(barX, screenRect.maxX - fittingSize.width - 16))
+        if AppState.shared.notchAvoidanceEnabled {
+            // Center smoothly below the notch
+            barX = (screenRect.width - panelWidth) / 2
+        } else if let statusFrame = StatusItemController.shared.statusItemFrame {
+            // Align near status item
+            barX = statusFrame.maxX - panelWidth
+            barX = max(16, min(barX, screenRect.maxX - panelWidth - 16))
         } else {
-            // Center of screen
-            barX = (screenRect.width - fittingSize.width) / 2
+            barX = (screenRect.width - panelWidth) / 2
         }
         
-        panel.setFrame(NSRect(x: barX, y: barY, width: fittingSize.width, height: fittingSize.height), display: true)
+        panel.setFrame(NSRect(x: barX, y: barY, width: panelWidth, height: panelHeight), display: true)
     }
     
     public override func mouseExited(with event: NSEvent) {

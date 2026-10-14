@@ -3,6 +3,7 @@ import SwiftUI
 
 public enum ThemePreset: String, Codable, CaseIterable, Identifiable, Sendable {
     case none = "Default (System)"
+    case goldenAle = "Golden Ale (Signature Amber)"
     case liquidGlass = "Liquid Glass (Modern Frosted)"
     case darkFrosted = "Deep Frosted Night"
     case modernPill = "Floating Island Pill"
@@ -58,6 +59,28 @@ public struct MenuBarTheme: Codable, Equatable, Sendable {
             shadowRadius: 5.0,
             shadowColorHex: "#000000",
             blurIntensity: 0.8,
+            isVibrant: true
+        )
+    }
+    
+    public static var goldenAleTheme: MenuBarTheme {
+        MenuBarTheme(
+            isEnabled: true,
+            preset: .goldenAle,
+            tintColorHex: "#D97706",
+            secondaryColorHex: "#78350F",
+            hasGradient: true,
+            opacity: 0.35,
+            cornerRadius: 14.0,
+            horizontalMargin: 10.0,
+            verticalMargin: 3.0,
+            heightInset: 2.0,
+            borderWidth: 1.2,
+            borderColorHex: "#F59E0B",
+            hasShadow: true,
+            shadowRadius: 10.0,
+            shadowColorHex: "#92400E",
+            blurIntensity: 0.85,
             isVibrant: true
         )
     }

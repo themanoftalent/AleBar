@@ -2,6 +2,14 @@ import Foundation
 import SwiftUI
 import Combine
 
+public enum HidingMode: String, Codable, CaseIterable, Identifiable, Sendable {
+    case inMenuBar = "Menu Bar Only (Hide via │ delimiter)"
+    case floatingShelf = "Floating Shelf Only (Notch bar)"
+    case both = "Both (Menu Bar & Floating Shelf)"
+    
+    public var id: String { rawValue }
+}
+
 @MainActor
 public final class AppState: ObservableObject {
     public static let shared = AppState()
@@ -16,6 +24,7 @@ public final class AppState: ObservableObject {
     // Presentation States
     @Published public var isAleBarVisible: Bool = false
     @Published public var isCommandBarVisible: Bool = false
+    @Published public var hidingMode: HidingMode = .both
     @Published public var hoverRevealEnabled: Bool = true
     @Published public var hoverRevealDelay: Double = 0.3
     @Published public var autoHideDelay: Double = 6.0
@@ -32,6 +41,12 @@ public final class AppState: ObservableObject {
     @Published public var selectedSettingsTab: String = "General"
     @Published public var menuItemsFilterText: String = ""
     @Published public var menuItemsFilterSection: String = "All"
+    @Published public var menuItemsIsScanning: Bool = false
+    @Published public var menuItemsToastMessage: String? = nil
+    @Published public var triggersToastMessage: String? = nil
+    @Published public var launchAtLogin: Bool = false
+    @Published public var aboutCopiedDiagnostics: Bool = false
+    @Published public var hasAccessibility: Bool = false
     
     // Live System Metrics
     @Published public var batteryLevel: Int = 100
@@ -125,6 +140,8 @@ public final class AppState: ObservableObject {
         switch preset {
         case .none:
             theme = .defaultTheme
+        case .goldenAle:
+            theme = .goldenAleTheme
         case .liquidGlass:
             theme = .liquidGlassTheme
         case .darkFrosted:
@@ -222,6 +239,7 @@ public final class AppState: ObservableObject {
     private let kAutoHideKey = "AleBar_AutoHideDelay"
     private let kHoverRevealKey = "AleBar_HoverReveal"
     private let kTopShelfKey = "AleBar_TopShelf"
+    private let kHidingModeKey = "AleBar_HidingMode"
     
     public func saveSettings() {
         if let themeData = try? JSONEncoder().encode(theme) {
@@ -231,6 +249,7 @@ public final class AppState: ObservableObject {
         UserDefaults.standard.set(autoHideDelay, forKey: kAutoHideKey)
         UserDefaults.standard.set(hoverRevealEnabled, forKey: kHoverRevealKey)
         UserDefaults.standard.set(topShelfEnabled, forKey: kTopShelfKey)
+        UserDefaults.standard.set(hidingMode.rawValue, forKey: kHidingModeKey)
         saveItems()
     }
     
@@ -246,6 +265,10 @@ public final class AppState: ObservableObject {
         if let rawStyle = UserDefaults.standard.string(forKey: kIconStyleKey),
            let style = StatusIconStyle(rawValue: rawStyle) {
             self.statusIconStyle = style
+        }
+        if let rawMode = UserDefaults.standard.string(forKey: kHidingModeKey),
+           let mode = HidingMode(rawValue: rawMode) {
+            self.hidingMode = mode
         }
         if UserDefaults.standard.object(forKey: kAutoHideKey) != nil {
             self.autoHideDelay = UserDefaults.standard.double(forKey: kAutoHideKey)

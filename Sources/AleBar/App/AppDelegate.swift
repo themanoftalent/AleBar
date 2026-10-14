@@ -14,9 +14,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         setupHotkeys()
         setupStylingOverlay()
         
-        print("AleBar launched successfully. Status item active in menu bar.")
+        print("AleBar launched successfully. Dual status items active in menu bar.")
         
-        // Show Settings on first launch or prompt so the user sees the app
+        // Show Settings on first launch so user sees the instructions and setup
         let hasLaunched = UserDefaults.standard.bool(forKey: "AleBar_HasLaunchedBefore")
         if !hasLaunched {
             UserDefaults.standard.set(true, forKey: "AleBar_HasLaunchedBefore")
@@ -34,24 +34,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusItem() {
         let statusController = StatusItemController.shared
         statusController.setup()
-        
-        statusController.onLeftClick = {
-            AppState.shared.toggleAleBar()
-        }
-        
-        statusController.onHoverReveal = {
-            AppState.shared.showAleBar()
-        }
     }
     
     private func setupEventBridges() {
         AppState.shared.onToggleAleBar = { isVisible in
             if isVisible {
-                AleBarWindowController.shared.show()
+                StatusItemController.shared.expand()
             } else {
-                AleBarWindowController.shared.hide()
+                StatusItemController.shared.collapse()
             }
-            StatusItemController.shared.updateIcon()
         }
         
         AppState.shared.onToggleCommandBar = { isVisible in
@@ -69,15 +60,27 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         AppState.shared.onStatusIconChanged = { _ in
             StatusItemController.shared.updateIcon()
         }
+        
+        TriggersEngine.shared.onTriggerFired = { rule in
+            StatusItemController.shared.expand()
+            if rule.revealSeconds > 0 {
+                TriggersEngine.shared.scheduleAutoHide(after: rule.revealSeconds) {
+                    StatusItemController.shared.collapse()
+                }
+            }
+        }
     }
     
     private func setupHotkeys() {
         let hotkeys = HotkeyManager.shared
         hotkeys.onToggleBar = {
-            AppState.shared.toggleAleBar()
+            StatusItemController.shared.toggle()
         }
         hotkeys.onOpenCommandBar = {
             AppState.shared.toggleCommandBar()
+        }
+        hotkeys.onOpenSettings = {
+            SettingsWindowController.shared.show()
         }
         hotkeys.start()
     }

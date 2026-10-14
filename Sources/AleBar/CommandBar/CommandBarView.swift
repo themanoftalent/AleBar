@@ -24,9 +24,9 @@ public struct CommandBarView: View {
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.accentColor)
                 
-                TextField("Search menu bar items, apps, or triggers...", text: $appState.commandBarQuery)
+                TextField("Search menu bar apps, system items, or triggers...", text: $appState.commandBarQuery)
                     .textFieldStyle(.plain)
                     .font(.system(size: 15, weight: .regular))
                     .onSubmit {
@@ -45,11 +45,11 @@ public struct CommandBarView: View {
                     .buttonStyle(.plain)
                 }
                 
-                Text("Esc to close")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.tertiary)
+                Text("Esc")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.secondary)
                     .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, 3)
                     .background(Color.primary.opacity(0.06))
                     .clipShape(RoundedRectangle(cornerRadius: 4))
             }
@@ -61,10 +61,10 @@ public struct CommandBarView: View {
             // Search Results List
             if filteredItems.isEmpty {
                 VStack(spacing: 8) {
-                    Image(systemName: "slash.circle")
-                        .font(.system(size: 24))
-                        .foregroundStyle(.secondary)
-                    Text("No matching menu bar items")
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 26))
+                        .foregroundStyle(.secondary.opacity(0.6))
+                    Text("No matching items found")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
@@ -72,7 +72,7 @@ public struct CommandBarView: View {
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(spacing: 2) {
+                        LazyVStack(spacing: 3) {
                             ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
                                 CommandBarItemRow(
                                     item: item,
@@ -88,7 +88,7 @@ public struct CommandBarView: View {
                         .padding(.vertical, 6)
                         .padding(.horizontal, 8)
                     }
-                    .frame(maxHeight: 280)
+                    .frame(maxHeight: 290)
                 }
             }
             
@@ -122,15 +122,15 @@ public struct CommandBarView: View {
                 
                 Spacer()
                 
-                Text("\(filteredItems.count) items available")
+                Text("\(filteredItems.count) items")
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(Color.primary.opacity(0.03))
+            .background(Color.primary.opacity(0.02))
         }
-        .frame(width: 540)
+        .frame(width: 560)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(.ultraThinMaterial)
@@ -138,7 +138,7 @@ public struct CommandBarView: View {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(Color.primary.opacity(0.12), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.25), radius: 24, x: 0, y: 12)
+                .shadow(color: Color.black.opacity(0.3), radius: 24, x: 0, y: 12)
         )
     }
     
@@ -162,20 +162,28 @@ private struct CommandBarItemRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 12) {
-                // Icon
+                // High-Res Icon
                 ZStack {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(isSelected ? Color.accentColor : Color.primary.opacity(0.08))
-                        .frame(width: 26, height: 26)
-                    Image(systemName: item.systemSymbol)
-                        .font(.system(size: 13))
-                        .foregroundStyle(isSelected ? Color.white : Color.primary)
+                        .fill(isSelected ? Color.white.opacity(0.2) : Color.primary.opacity(0.06))
+                        .frame(width: 30, height: 30)
+                    
+                    if let icon = item.appIcon {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 20, height: 20)
+                    } else {
+                        Image(systemName: item.systemSymbol)
+                            .font(.system(size: 14))
+                            .foregroundStyle(isSelected ? Color.white : Color.primary)
+                    }
                 }
                 
                 // Name & Details
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.name)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(isSelected ? Color.white : Color.primary)
                     
                     if let bundleId = item.bundleIdentifier {
@@ -196,7 +204,7 @@ private struct CommandBarItemRow: View {
                 }
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
-                .background(isSelected ? Color.white.opacity(0.2) : Color.primary.opacity(0.06))
+                .background(isSelected ? Color.white.opacity(0.25) : Color.primary.opacity(0.06))
                 .clipShape(Capsule())
                 .foregroundStyle(isSelected ? Color.white : Color.secondary)
             }

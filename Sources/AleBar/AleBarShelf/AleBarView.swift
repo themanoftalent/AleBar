@@ -18,29 +18,51 @@ public struct AleBarView: View {
         VStack(spacing: 8) {
             // Main Top Bar Row
             HStack(spacing: 12) {
-                // AleBar Brand Pill
-                HStack(spacing: 6) {
-                    Image(systemName: "mug.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.tint)
-                    Text("AleBar")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
+                // AleBar Brand Pill with Quick Menu
+                Menu {
+                    Button("Open AleBar Preferences...") {
+                        SettingsWindowController.shared.show()
+                    }
+                    Button("Quick Search (⌘⌥Space)") {
+                        AppState.shared.showCommandBar()
+                    }
+                    Divider()
+                    Button("Collapse / Hide Shelf") {
+                        AppState.shared.hideAleBar()
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "mug.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.amberAccent)
+                        Text("AleBar")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.primary.opacity(0.08))
+                    .clipShape(Capsule())
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.primary.opacity(0.08))
-                .clipShape(Capsule())
+                .menuStyle(.borderlessButton)
                 
                 Divider()
                     .frame(height: 18)
                 
                 // Hidden Menu Items Grid / Row
                 if hiddenItems.isEmpty {
-                    Text("No hidden items. Configure items in Settings.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
+                    HStack(spacing: 6) {
+                        Text("No hidden items.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        Button("Configure in Settings") {
+                            SettingsWindowController.shared.show()
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Color.accentColor)
+                    }
+                    .padding(.horizontal, 8)
                 } else {
                     HStack(spacing: 8) {
                         ForEach(hiddenItems) { item in
@@ -200,11 +222,18 @@ private struct ItemButtonView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(isHovered ? Color.primary.opacity(0.12) : Color.clear)
-                        .frame(width: 30, height: 30)
+                        .frame(width: 32, height: 32)
                     
-                    Image(systemName: item.systemSymbol)
-                        .font(.system(size: 14))
-                        .foregroundStyle(item.isRunning ? Color.primary : Color.secondary)
+                    if let icon = item.appIcon {
+                        Image(nsImage: icon)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 20, height: 20)
+                    } else {
+                        Image(systemName: item.systemSymbol)
+                            .font(.system(size: 14))
+                            .foregroundStyle(item.isRunning ? Color.primary : Color.secondary)
+                    }
                 }
                 
                 // Running indicator dot
