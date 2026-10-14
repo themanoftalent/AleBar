@@ -172,4 +172,8 @@ cp /tmp/alebar_icon_1024.png "$ICONSET_DIR/icon_512x512@2x.png"
 iconutil -c icns "$ICONSET_DIR" -o "$RESOURCES_DIR/AppIcon.icns"
 rm -rf "$ICONSET_DIR" /tmp/generate_alebar_icon.swift /tmp/alebar_icon_1024.png
 
-echo "Application bundle created successfully: $APP_DIR"
+echo "Signing application bundle with ad-hoc signature..."
+codesign --force --deep --sign - "$APP_DIR"
+codesign -vvv --deep --strict "$APP_DIR"
+
+echo "Application bundle created and signed successfully: $APP_DIR"

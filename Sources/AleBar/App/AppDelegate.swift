@@ -15,6 +15,20 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStylingOverlay()
         
         print("AleBar launched successfully. Status item active in menu bar.")
+        
+        // Show Settings on first launch or prompt so the user sees the app
+        let hasLaunched = UserDefaults.standard.bool(forKey: "AleBar_HasLaunchedBefore")
+        if !hasLaunched {
+            UserDefaults.standard.set(true, forKey: "AleBar_HasLaunchedBefore")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                SettingsWindowController.shared.show()
+            }
+        }
+    }
+    
+    public func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        SettingsWindowController.shared.show()
+        return true
     }
     
     private func setupStatusItem() {
